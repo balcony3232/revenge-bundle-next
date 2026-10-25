@@ -1,4 +1,4 @@
-import { getModules } from '@revenge-mod/modules/finders/get'
+import { getModules } from '@revenge-mod/modules/finders'
 import { withProps } from '@revenge-mod/modules/finders/filters'
 import { after } from '@revenge-mod/patcher'
 import { createElement, useState } from 'react'
