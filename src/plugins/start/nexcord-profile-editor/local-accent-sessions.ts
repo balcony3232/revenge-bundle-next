@@ -30,7 +30,8 @@ export const localAccentSessions = {
             }
             session.dispose()
             void session.whenIdle().then(() => {
-                tracked.delete(session)
+                if (![...sessions.values()].includes(session))
+                    tracked.delete(session)
             })
         }
     },
