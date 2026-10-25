@@ -2,7 +2,7 @@ import { registerSettingsItems, registerSettingsSection } from '@revenge-mod/dis
 import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import { clientProfileOverrides } from '~/nexcord/plugins/profile-overrides'
 import { loadLocalProfiles } from '~/nexcord/plugins/profile-storage'
-import { beginNativeEditorDiscovery } from './native-editor'
+import { beginNativeEditorDiscovery, stopNativeEditorIntegration } from './native-editor'
 import manifest from './manifest.json'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 
@@ -28,5 +28,5 @@ export default registerInternalPlugin(manifest, {
       settings: ['NexcordProfileEditor'],
     })
   },
-  stop() { clientProfileOverrides.setEnabled(false) },
+  stop() { stopNativeEditorIntegration(); clientProfileOverrides.setEnabled(false) },
 })
