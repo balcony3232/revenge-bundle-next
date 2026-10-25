@@ -17,9 +17,10 @@ export type NativeEditorDiscovery = {
   formCalls: number
   hookCalls: number
   observerStatus: string[]
+  exportDiagnostics: string[]
 }
 
-const state: NativeEditorDiscovery = { path: null, exportNames: [], saveCalls: 0, saveArgumentShapes: [], formCalls: 0, hookCalls: 0, observerStatus: [] }
+const state: NativeEditorDiscovery = { path: null, exportNames: [], saveCalls: 0, saveArgumentShapes: [], formCalls: 0, hookCalls: 0, observerStatus: [], exportDiagnostics: [] }
 const listeners = new Set<() => void>()
 let started = false
 const unsubscribers: (() => void)[] = []
@@ -39,7 +40,7 @@ function notify(): void {
 }
 
 export function getNativeEditorDiscovery(): NativeEditorDiscovery {
-  return { path: state.path, exportNames: [...state.exportNames], saveCalls: state.saveCalls, saveArgumentShapes: [...state.saveArgumentShapes], formCalls: state.formCalls, hookCalls: state.hookCalls, observerStatus: [...state.observerStatus] }
+  return { path: state.path, exportNames: [...state.exportNames], saveCalls: state.saveCalls, saveArgumentShapes: [...state.saveArgumentShapes], formCalls: state.formCalls, hookCalls: state.hookCalls, observerStatus: [...state.observerStatus], exportDiagnostics: [...state.exportDiagnostics] }
 }
 
 export function subscribeNativeEditorDiscovery(listener: () => void): () => void {
@@ -65,6 +66,11 @@ export function beginNativeEditorDiscovery(): void {
         const names = Object.keys(exports as Record<string, unknown>)
         if (!names.includes(name)) return
         state.exportNames = [...new Set([...state.exportNames, name])]
+        const namespace = exports as Record<string, unknown>
+        const value = namespace[name]
+        const descriptor = Object.getOwnPropertyDescriptor(namespace, name)
+        const diagnostic = name + ': type=' + typeof value + ', descriptor=' + (descriptor ? (descriptor.get ? 'getter' : 'value') + (descriptor.writable ? '/writable' : '') + (descriptor.configurable ? '/configurable' : '') : 'missing') + ', keys=' + Object.keys(namespace).length
+        state.exportDiagnostics = [...state.exportDiagnostics.filter(item => !item.startsWith(name + ':')), diagnostic]
         if (name === 'saveProfileAndAccountChanges') {
           state.path = 'Native profile Save handler located (observing argument shapes only)'
           if (!unpatchSave && typeof (exports as Record<string, unknown>)[name] === 'function') {
@@ -116,5 +122,6 @@ export function stopNativeEditorIntegration(): void {
   state.formCalls = 0
   state.hookCalls = 0
   state.observerStatus = []
+  state.exportDiagnostics = []
   notify()
 }
