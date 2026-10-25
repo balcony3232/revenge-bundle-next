@@ -26,14 +26,18 @@ export type NativeEditorDiscovery = {
   discoveryErrors: string[]
   directSavePatch: string
   automaticSavePatch: string
+  additionalSaveCalls: Record<string, number>
 }
 
-const state: NativeEditorDiscovery = { path: null, exportNames: [], saveCalls: 0, saveArgumentShapes: [], formCalls: 0, hookCalls: 0, observerStatus: [], exportDiagnostics: [], discoveryStarted: false, scannedModules: 0, scanErrors: 0, discoveryErrors: [], directSavePatch: 'not attempted', automaticSavePatch: 'not attempted' }
+const state: NativeEditorDiscovery = { path: null, exportNames: [], saveCalls: 0, saveArgumentShapes: [], formCalls: 0, hookCalls: 0, observerStatus: [], exportDiagnostics: [], discoveryStarted: false, scannedModules: 0, scanErrors: 0, discoveryErrors: [], directSavePatch: 'not attempted', automaticSavePatch: 'not attempted', additionalSaveCalls: {} }
 const listeners = new Set<() => void>()
 let started = false
 const unsubscribers: (() => void)[] = []
 let unpatchSave: (() => void) | undefined
 const formUnpatchers: (() => void)[] = []
+const additionalSaveUnpatchers: (() => void)[] = []
+const additionalSaveAttached = new Set<string>()
+const additionalTargets = ['saveProfileAndAccountRequest', 'resetAndCloseUserProfileForm'] as const
 
 function describeShape(value: unknown): string {
   if (value === null) return 'null'
@@ -48,7 +52,7 @@ function notify(): void {
 }
 
 export function getNativeEditorDiscovery(): NativeEditorDiscovery {
-  return { path: state.path, exportNames: [...state.exportNames], saveCalls: state.saveCalls, saveArgumentShapes: [...state.saveArgumentShapes], formCalls: state.formCalls, hookCalls: state.hookCalls, observerStatus: [...state.observerStatus], exportDiagnostics: [...state.exportDiagnostics], discoveryStarted: state.discoveryStarted, scannedModules: state.scannedModules, scanErrors: state.scanErrors, discoveryErrors: [...state.discoveryErrors], directSavePatch: state.directSavePatch, automaticSavePatch: state.automaticSavePatch }
+  return { path: state.path, exportNames: [...state.exportNames], saveCalls: state.saveCalls, saveArgumentShapes: [...state.saveArgumentShapes], formCalls: state.formCalls, hookCalls: state.hookCalls, observerStatus: [...state.observerStatus], exportDiagnostics: [...state.exportDiagnostics], discoveryStarted: state.discoveryStarted, scannedModules: state.scannedModules, scanErrors: state.scanErrors, discoveryErrors: [...state.discoveryErrors], directSavePatch: state.directSavePatch, automaticSavePatch: state.automaticSavePatch, additionalSaveCalls: { ...state.additionalSaveCalls } }
 }
 
 export function subscribeNativeEditorDiscovery(listener: () => void): () => void {
@@ -67,6 +71,7 @@ export function beginNativeEditorDiscovery(): void {
     'UserProfileEditForm',
     'useUserProfileEditForm',
     'saveProfileAndAccountChanges',
+    ...additionalTargets,
   ] as const
 
   for (const name of targets) {
@@ -97,6 +102,19 @@ export function beginNativeEditorDiscovery(): void {
             }
           }
         } else {
+          if (additionalTargets.some(target => target === name) && typeof value === 'function' && !additionalSaveAttached.has(name)) {
+            try {
+              const undo = before(namespace as Record<string, (...args: unknown[]) => unknown>, name, () => {
+                state.additionalSaveCalls[name] = (state.additionalSaveCalls[name] || 0) + 1
+                notify()
+              })
+              additionalSaveUnpatchers.push(undo)
+              additionalSaveAttached.add(name)
+              state.observerStatus.push(name + ': attached via finder')
+            } catch (error) {
+              state.observerStatus.push(name + ': failed (' + String(error).slice(0, 120) + ')')
+            }
+          }
           if (!state.path) state.path = 'Native profile editor module located'
           if ((name === 'UserProfileEditForm' || name === 'useUserProfileEditForm') && typeof (exports as Record<string, unknown>)[name] === 'function' && !state.observerStatus.some(x => x.startsWith(name + ':'))) {
             try {
@@ -125,7 +143,7 @@ export function beginNativeEditorDiscovery(): void {
 
 /** Recheck initialized Metro exports without mutating Discord's profile state. */
 export function rescanNativeEditorModules(): void {
-  const targets = ['UserSettingsEditUserProfile', 'UserProfileEditForm', 'useUserProfileEditForm', 'saveProfileAndAccountChanges']
+  const targets = ['UserSettingsEditUserProfile', 'UserProfileEditForm', 'useUserProfileEditForm', 'saveProfileAndAccountChanges', ...additionalTargets]
   state.scannedModules = 0
   state.scanErrors = 0
   state.discoveryErrors = []
@@ -143,6 +161,19 @@ export function rescanNativeEditorModules(): void {
         const diagnostic = name + ': module=' + id + ', type=' + typeof value + ', descriptor=' + (descriptor?.get ? 'getter' : descriptor ? 'value' : 'missing')
         state.exportDiagnostics = [...state.exportDiagnostics.filter(item => !item.startsWith(name + ':')), diagnostic]
         if (!state.path) state.path = 'Native profile editor module located'
+        if (additionalTargets.some(target => target === name) && typeof value === 'function' && !additionalSaveAttached.has(name)) {
+          try {
+            const undo = before(namespace as Record<string, (...args: unknown[]) => unknown>, name, () => {
+              state.additionalSaveCalls[name] = (state.additionalSaveCalls[name] || 0) + 1
+              notify()
+            })
+            additionalSaveUnpatchers.push(undo)
+            additionalSaveAttached.add(name)
+            state.observerStatus.push(name + ': attached via scan module ' + id)
+          } catch (error) {
+            state.observerStatus.push(name + ': failed (' + String(error).slice(0, 120) + ')')
+          }
+        }
         if (name === 'saveProfileAndAccountChanges') {
           if (typeof value !== 'function') {
             state.directSavePatch = 'skipped: export is ' + typeof value
@@ -173,6 +204,8 @@ export function rescanNativeEditorModules(): void {
 export function stopNativeEditorIntegration(): void {
   started = false
   for (const unpatch of formUnpatchers.splice(0)) unpatch()
+  for (const unpatch of additionalSaveUnpatchers.splice(0)) unpatch()
+  additionalSaveAttached.clear()
   unpatchSave?.()
   unpatchSave = undefined
   for (const unsubscribe of unsubscribers.splice(0)) unsubscribe()
@@ -190,5 +223,6 @@ export function stopNativeEditorIntegration(): void {
   state.discoveryErrors = []
   state.directSavePatch = 'not attempted'
   state.automaticSavePatch = 'not attempted'
+  state.additionalSaveCalls = {}
   notify()
 }
