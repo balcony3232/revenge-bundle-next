@@ -87,9 +87,11 @@ export default function NexcordProfileEditorScreen() {
       <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Native Save integration</Text>
       <Text style={caption}>Detected modules: {nativeEditor.exportNames.length ? nativeEditor.exportNames.join(', ') : 'none yet'}</Text>
       <Text style={{ color: '#ddd', marginTop: 8 }}>Observed native Save calls: {nativeEditor.saveCalls}</Text>
+      <Text style={caption}>Form renders: {nativeEditor.formCalls} · Form hook calls: {nativeEditor.hookCalls}</Text>
+      <Text selectable style={caption}>Probe status: {nativeEditor.observerStatus.join(' | ') || 'pending'}</Text>
       <Text selectable style={caption}>Argument shapes: {nativeEditor.saveArgumentShapes.join(' | ') || 'none observed'}</Text>
       <Text style={{ color: '#a99cf8', marginTop: 8 }}>{nativeEditor.exportNames.includes('saveProfileAndAccountChanges') ? 'Save handler located. Metadata-only observer active; Discord Save behaviour is unchanged.' : 'Save handler not detected yet. Open the native Profile screen, then return.'}</Text>
-      <Pressable onPress={() => { const message = 'Nexcord native Save observation v2\\n' + nativeEditor.exportNames.map(name => name + ': detected').join('\\n') + '\\nObserved Save calls: ' + nativeEditor.saveCalls + '\\nArgument shapes: ' + (nativeEditor.saveArgumentShapes.join(' | ') || 'none'); setSaveReport(message); void Share.share({ message }) }} style={{ backgroundColor: '#40404c', padding: 12, borderRadius: 9, marginTop: 12 }}><Text style={{ color: '#fff', fontWeight: '700' }}>Share Save diagnostics</Text></Pressable>
+      <Pressable onPress={() => { const message = 'Nexcord native form observation v3\\n' + nativeEditor.exportNames.map(name => name + ': detected').join('\\n') + '\\nObserved Save calls: ' + nativeEditor.saveCalls + '\\nForm renders: ' + nativeEditor.formCalls + '\\nForm hook calls: ' + nativeEditor.hookCalls + '\\nProbe status: ' + nativeEditor.observerStatus.join(' | ') + '\\nArgument shapes: ' + (nativeEditor.saveArgumentShapes.join(' | ') || 'none'); setSaveReport(message); void Share.share({ message }) }} style={{ backgroundColor: '#40404c', padding: 12, borderRadius: 9, marginTop: 12 }}><Text style={{ color: '#fff', fontWeight: '700' }}>Share Save diagnostics</Text></Pressable>
       {saveReport ? <Text selectable style={{ color: '#bbb', fontSize: 12, marginTop: 8 }}>{saveReport}</Text> : null}
     </View>
     <View style={panel}>
