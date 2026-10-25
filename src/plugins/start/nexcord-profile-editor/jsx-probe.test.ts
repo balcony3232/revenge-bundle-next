@@ -3,6 +3,33 @@ import { ProfileJSXProbe } from './jsx-probe'
 import type { ReactElement } from 'react'
 
 describe('profile JSX metadata probe', () => {
+    it('matches default and direct component exports by name without invoking components', () => {
+        const register = vi.fn(() => () => {})
+        const probe = new ProfileJSXProbe(register)
+        probe.start()
+        const render = vi.fn()
+        function UserProfileEditForm() {
+            render()
+            return null
+        }
+        const screen = Object.defineProperty(() => null, 'displayName', {
+            value: 'UserSettingsEditUserProfile',
+        })
+        probe.inspect({ default: UserProfileEditForm })
+        probe.inspect(UserProfileEditForm)
+        probe.inspect({ default: screen })
+        expect(register).toHaveBeenCalledTimes(2)
+        expect(probe.snapshot().attached).toEqual([
+            'UserProfileEditForm',
+            'UserSettingsEditUserProfile',
+        ])
+        expect(render).not.toHaveBeenCalled()
+        const getter = vi.fn(() => screen)
+        probe.inspect(Object.defineProperty({}, 'default', { get: getter }))
+        expect(getter).not.toHaveBeenCalled()
+        expect(register).toHaveBeenCalledTimes(2)
+    })
+
     it('stays off until enabled and preserves frozen elements and callbacks', () => {
         const callbacks: ((el: ReactElement) => ReactElement)[] = []
         const remove = vi.fn()

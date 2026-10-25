@@ -42,12 +42,44 @@ export class ProfileJSXProbe {
             (typeof namespace !== 'object' && typeof namespace !== 'function')
         )
             return
+        const candidates = new Map<string, PropertyDescriptor | undefined>()
+        try {
+            for (const name of targets) {
+                candidates.set(
+                    name,
+                    Object.getOwnPropertyDescriptor(namespace, name),
+                )
+            }
+            const fallback =
+                typeof namespace === 'function'
+                    ? namespace
+                    : Object.getOwnPropertyDescriptor(namespace, 'default')
+                          ?.value
+            if (typeof fallback === 'function') {
+                const displayName = Object.getOwnPropertyDescriptor(
+                    fallback,
+                    'displayName',
+                )?.value
+                const functionName = Object.getOwnPropertyDescriptor(
+                    fallback,
+                    'name',
+                )?.value
+                for (const name of targets) {
+                    if (
+                        (displayName === name || functionName === name) &&
+                        !candidates.get(name)
+                    ) {
+                        candidates.set(name, { value: fallback })
+                    }
+                }
+            }
+        } catch {
+            this.errors++
+            return
+        }
         for (const name of targets) {
             try {
-                const descriptor = Object.getOwnPropertyDescriptor(
-                    namespace,
-                    name,
-                )
+                const descriptor = candidates.get(name)
                 const type = descriptor?.value
                 if (!descriptor) continue
                 if (descriptor.get || descriptor.set) {
