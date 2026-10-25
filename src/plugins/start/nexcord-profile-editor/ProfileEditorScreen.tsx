@@ -184,6 +184,52 @@ export default function NexcordProfileEditorScreen() {
             <Text style={{ color: '#bbb', marginBottom: 18 }}>
                 Free local-only customisation. No Discord account changes.
             </Text>
+            <View style={panel}>
+                <Text selectable style={caption}>
+                    Native row test v1 · Build {__BUILD_COMMIT__}
+                </Text>
+                <Text
+                    style={{
+                        color: '#fff',
+                        fontSize: 16,
+                        fontWeight: '700',
+                        marginTop: 16,
+                    }}
+                >
+                    Native profile test row
+                </Text>
+                <Text style={caption}>
+                    Shows a Nexcord information row alongside the normal profile
+                    form. Enable, then reopen Customize Profile and scroll to
+                    the bottom. No cosmetic values are edited or saved. Off
+                    after app restart.
+                </Text>
+                <Pressable
+                    onPress={() => {
+                        setNativeProfileTestRowEnabled(
+                            !getProfileJSXProbe().testRowEnabled,
+                        )
+                        setJSXProbe(getProfileJSXProbe())
+                    }}
+                    style={{
+                        backgroundColor: '#40404c',
+                        padding: 12,
+                        borderRadius: 9,
+                        marginTop: 12,
+                    }}
+                >
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>
+                        {jsxProbe.testRowEnabled
+                            ? 'Disable native test row'
+                            : 'Enable native test row'}
+                    </Text>
+                </Pressable>
+                <Text selectable style={caption}>
+                    Test row: {jsxProbe.testRowEnabled ? 'ON' : 'OFF'} ·
+                    Insertions: {jsxProbe.testRowInsertions} · Row errors:{' '}
+                    {jsxProbe.testRowErrors}
+                </Text>
+            </View>
             <Text style={{ color: '#a99cf8', marginBottom: 12 }}>
                 {nativeEditor.path
                     ? 'Native profile editor module detected (integration pending)'
@@ -397,47 +443,7 @@ export default function NexcordProfileEditorScreen() {
                     {jsxProbe.observations.join('\n') ||
                         'No JSX observations yet. Getter and memo exports are skipped.'}
                 </Text>
-                <Text
-                    style={{
-                        color: '#fff',
-                        fontSize: 16,
-                        fontWeight: '700',
-                        marginTop: 16,
-                    }}
-                >
-                    Native profile test row
-                </Text>
-                <Text style={caption}>
-                    Shows a Nexcord information row alongside the normal profile
-                    form. Enable, then reopen Customize Profile and scroll to
-                    the bottom. No cosmetic values are edited or saved. Off
-                    after app restart.
-                </Text>
-                <Pressable
-                    onPress={() => {
-                        setNativeProfileTestRowEnabled(
-                            !getProfileJSXProbe().testRowEnabled,
-                        )
-                        setJSXProbe(getProfileJSXProbe())
-                    }}
-                    style={{
-                        backgroundColor: '#40404c',
-                        padding: 12,
-                        borderRadius: 9,
-                        marginTop: 12,
-                    }}
-                >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>
-                        {jsxProbe.testRowEnabled
-                            ? 'Disable native test row'
-                            : 'Enable native test row'}
-                    </Text>
-                </Pressable>
-                <Text selectable style={caption}>
-                    Test row: {jsxProbe.testRowEnabled ? 'ON' : 'OFF'} ·
-                    Insertions: {jsxProbe.testRowInsertions} · Row errors:{' '}
-                    {jsxProbe.testRowErrors}
-                </Text>
+
                 <Pressable
                     onPress={() => {
                         const snapshot = getProfileJSXProbe()
