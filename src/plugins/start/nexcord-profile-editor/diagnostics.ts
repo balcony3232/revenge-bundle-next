@@ -1,7 +1,7 @@
 import { mInitialized } from '@revenge-mod/modules/metro/patches'
 import { getInitializedModuleExports } from '@revenge-mod/modules/metro/utils'
 
-export type DiagnosticResult = { scanned: number; matches: { id: number; hints: string[] }[] }
+export type DiagnosticResult = { scanned: number; totalMatches: number; matches: { id: number; hints: string[] }[] }
 const relevant = /profile|customi[sz]|avatar|decoration|nameplate|banner|effect/i
 const sensitive = /token|secret|password|email|phone|session|auth|cookie|message|guild|user.?id/i
 
@@ -33,7 +33,9 @@ export function scanProfileModules(): DiagnosticResult {
       // Uninspectable modules are skipped.
     }
   }
-  return { scanned, matches: matches.slice(0, 120) }
+  const priority = /customi[sz]|profile.?edit|profile.?setting|userprofile|profile.?effect|avatar.?decoration/i
+  matches.sort((a, b) => Number(priority.test(b.hints.join(' '))) - Number(priority.test(a.hints.join(' '))))
+  return { scanned, totalMatches: matches.length, matches: matches.slice(0, 250) }
 }
 
 export function formatDiagnosticReport(result: DiagnosticResult): string {
@@ -41,7 +43,7 @@ export function formatDiagnosticReport(result: DiagnosticResult): string {
     'Nexcord profile module diagnostics v1',
     'Metadata only; no account identifiers or message contents',
     'Initialized modules scanned: ' + result.scanned,
-    'Matching modules: ' + result.matches.length,
+    'Matching modules: ' + result.totalMatches + ' (showing up to 250 prioritized)',
     ...result.matches.map(m => m.id + ': ' + m.hints.join(', ')),
   ].join('\n')
 }
