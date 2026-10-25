@@ -3,6 +3,7 @@ import { onAnyModuleInitialized } from '@revenge-mod/modules/metro/subscriptions
 import { getInitializedModuleExports } from '@revenge-mod/modules/metro/utils'
 import { afterJSX } from '@revenge-mod/react/jsx-runtime'
 import { ProfileJSXProbe } from './jsx-probe'
+import { localAccentSessions } from './local-accent-sessions'
 import type { observeProfileLifecycle } from './profile-lifecycle'
 
 let testRowEnabled = false
@@ -15,7 +16,11 @@ const probe = new ProfileJSXProbe((type, observe, name) =>
         const original = observe(element)
         if (
             !testRowEnabled ||
-            !['UserProfileEditForm', 'UserProfileEditTheme'].includes(name) ||
+            ![
+                'UserProfileEditForm',
+                'UserProfileEditTheme',
+                'HeaderTextButton',
+            ].includes(name) ||
             !original
         )
             return original
@@ -25,7 +30,7 @@ const probe = new ProfileJSXProbe((type, observe, name) =>
                     original,
                     name,
                 )
-            testRowInsertions++
+            if (result !== original) testRowInsertions++
             return result
         } catch {
             testRowErrors++
@@ -43,11 +48,13 @@ export function getProfileJSXProbe() {
         testRowErrors,
         lifecycleEvents: lifecycle?.snapshot() ?? {},
         lifecycleErrors,
+        localSave: localAccentSessions.diagnostics(),
     }
 }
 
 export function setNativeProfileTestRowEnabled(enabled: boolean): void {
     testRowEnabled = enabled
+    if (!enabled) localAccentSessions.stop()
     if (enabled) startProfileJSXProbe()
 }
 
@@ -80,6 +87,7 @@ export function refreshProfileJSXProbe() {
 
 export function stopProfileJSXProbe(): void {
     testRowEnabled = false
+    localAccentSessions.stop()
     lifecycle?.stop()
     lifecycle = undefined
     unsubscribe?.()

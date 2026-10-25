@@ -186,7 +186,7 @@ export default function NexcordProfileEditorScreen() {
             </Text>
             <View style={panel}>
                 <Text selectable style={caption}>
-                    Native accent preview v2 · Build {__BUILD_COMMIT__}
+                    Native accent Save v3 · Build {__BUILD_COMMIT__}
                 </Text>
                 <Text
                     style={{
@@ -196,14 +196,14 @@ export default function NexcordProfileEditorScreen() {
                         marginTop: 16,
                     }}
                 >
-                    Native local accent preview
+                    Native local accent Save
                 </Text>
                 <Text style={caption}>
-                    Enable, reopen Customize Profile, then find Nexcord below
-                    the profile theme section. Change the local accent and check
-                    its preview. This draft resets when the editor closes.
-                    Discord Save does not save the local draft yet. Off after
-                    app restart.
+                    Enable, reopen Customize Profile, and change the Nexcord
+                    colour. Use the existing Save button to store it on this
+                    device. Unsaved colours are discarded on close. Mixed edits
+                    require confirmed Discord success before local saving. The
+                    saved colour currently appears only in the Nexcord preview.
                 </Text>
                 <Pressable
                     onPress={() => {
@@ -221,14 +221,17 @@ export default function NexcordProfileEditorScreen() {
                 >
                     <Text style={{ color: '#fff', fontWeight: '700' }}>
                         {jsxProbe.testRowEnabled
-                            ? 'Disable local accent preview'
-                            : 'Enable local accent preview'}
+                            ? 'Disable local accent Save'
+                            : 'Enable local accent Save'}
                     </Text>
                 </Pressable>
                 <Text selectable style={caption}>
                     Local preview: {jsxProbe.testRowEnabled ? 'ON' : 'OFF'} ·
                     Insertions: {jsxProbe.testRowInsertions} · Row errors:{' '}
                     {jsxProbe.testRowErrors}
+                </Text>
+                <Text selectable style={caption}>
+                    Local Save connection: {JSON.stringify(jsxProbe.localSave)}
                 </Text>
             </View>
             <Text style={{ color: '#a99cf8', marginBottom: 12 }}>

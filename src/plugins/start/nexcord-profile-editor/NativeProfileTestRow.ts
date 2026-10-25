@@ -1,27 +1,35 @@
+import { NavigationRouteContext } from '@react-navigation/native'
 import {
+    cloneElement,
     createContext,
     createElement,
     Fragment,
     useContext,
-    useState,
+    useEffect,
+    useMemo,
+    useSyncExternalStore,
 } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import {
-    initialAccentDraft,
-    isAccentDraftValid,
-    updateAccentDraft,
-} from './accent-draft'
-import type { ReactElement } from 'react'
-import type { AccentDraft } from './accent-draft'
+import { validProfileId } from './local-accent-repository'
+import { LocalAccentSession } from './local-accent-session'
+import { localAccentSessions } from './local-accent-sessions'
+import { nativeAccentRepository } from './native-accent-repository'
+import type { Context, ReactElement } from 'react'
 
-const InNativeProfileForm = createContext(false)
+const InNativeProfileForm = createContext<LocalAccentSession | null>(null)
+const RouteContext = (NavigationRouteContext ??
+    createContext(undefined)) as Context<{ key: string } | undefined>
 const caption = { color: '#bbb', marginTop: 8 } as const
+const subscribeNothing = () => () => {}
+const noSession = () => null
 
-export function NativeAccentDraft() {
-    const [draft, setDraft] = useState<AccentDraft>(() => ({
-        ...initialAccentDraft,
-    }))
-    const valid = isAccentDraftValid(draft)
+export function NativeAccentDraft({
+    session,
+}: {
+    session: LocalAccentSession
+}) {
+    const draft = useSyncExternalStore(session.subscribe, session.snapshot)
+    const valid = draft.valid
     return createElement(
         View,
         {
@@ -38,16 +46,12 @@ export function NativeAccentDraft() {
             { style: { color: '#fff', fontSize: 16, fontWeight: '700' } },
             'Nexcord local cosmetics',
         ),
-        createElement(
-            Text,
-            { style: caption },
-            'Local accent colour (preview only)',
-        ),
+        createElement(Text, { style: caption }, 'Local accent colour'),
         createElement(TextInput, {
             accessibilityLabel: 'Local accent colour in hexadecimal',
             value: draft.input,
-            onChangeText: (input: string) =>
-                setDraft(previous => updateAccentDraft(previous, input)),
+            onChangeText: (input: string) => session.change(input),
+            editable: draft.ready && !draft.saving,
             placeholder: '#7162DA',
             placeholderTextColor: '#999',
             autoCapitalize: 'characters',
@@ -85,34 +89,102 @@ export function NativeAccentDraft() {
             Pressable,
             {
                 accessibilityRole: 'button',
-                onPress: () => setDraft({ ...initialAccentDraft }),
+                onPress: () => session.reset(),
                 style: { padding: 12, marginTop: 8 },
             },
             createElement(
                 Text,
                 { style: { color: '#a99cf8' } },
-                'Reset local preview',
+                'Reset local draft',
             ),
         ),
+        createElement(Text, { style: caption }, draft.status),
         createElement(
             Text,
             { style: caption },
-            'This draft stays in this editor. Discord Save does not save it yet. Closing the editor discards it. Your Discord profile is unchanged.',
+            draft.headerConnected
+                ? 'Use the existing Save button above. Unsaved colour edits are discarded when you close.'
+                : 'Native Save is not connected on this screen yet. No local colour can be saved here.',
         ),
     )
 }
 
 function NativeThemeAnchor({ original }: { original: ReactElement }) {
-    const insideForm = useContext(InNativeProfileForm)
-    if (!insideForm) return original
+    const session = useContext(InNativeProfileForm)
+    if (!session) return original
     return createElement(
         Fragment,
         null,
         original,
         createElement(NativeAccentDraft, {
             key: 'nexcord-native-accent-draft',
+            session,
         }),
     )
+}
+
+function NativeProfileFormScope({ original }: { original: ReactElement }) {
+    const route = useContext(RouteContext)
+    const user = (original.props as { currentUser?: unknown }).currentUser
+    const id =
+        user && typeof user === 'object'
+            ? Object.getOwnPropertyDescriptor(user, 'id')?.value
+            : ''
+    const userId = typeof id === 'string' ? id : ''
+    // biome-ignore lint/correctness/useExhaustiveDependencies: Route changes require a fresh draft session.
+    const session = useMemo(
+        () => new LocalAccentSession(nativeAccentRepository, userId),
+        [userId, route?.key],
+    )
+    useEffect(() => {
+        const remove =
+            route?.key && validProfileId(userId)
+                ? localAccentSessions.register(route.key, session)
+                : () => session.dispose()
+        void session.load()
+        return remove
+    }, [route?.key, session, userId])
+    return createElement(
+        InNativeProfileForm.Provider,
+        { value: session },
+        original,
+    )
+}
+
+type NativeSaveProps = { text?: unknown; disabled?: unknown; onPress?: unknown }
+function NativeSaveHeader({ original }: { original: ReactElement }) {
+    const route = useContext(RouteContext)
+    useSyncExternalStore(
+        localAccentSessions.subscribe,
+        localAccentSessions.revision,
+    )
+    const session = localAccentSessions.get(route?.key)
+    const draft = useSyncExternalStore(
+        session?.subscribe ?? subscribeNothing,
+        session?.snapshot ?? noSession,
+    )
+    useEffect(() => session?.connectHeader(), [session])
+    const props = original.props as NativeSaveProps
+    if (
+        !session ||
+        !draft ||
+        props.text !== 'Save' ||
+        typeof props.disabled !== 'boolean' ||
+        typeof props.onPress !== 'function'
+    )
+        return original
+    if (!draft.dirty && !draft.saving) return original
+    if (!draft.valid && !draft.saving) return original
+    const nativeDirty = !props.disabled
+    const onPress = props.onPress
+    return cloneElement(original as ReactElement<Record<string, unknown>>, {
+        disabled: draft.saving || (!nativeDirty && !draft.ready),
+        onPress: function (this: unknown, ...args: unknown[]) {
+            return session.save(nativeDirty, () =>
+                Reflect.apply(onPress, this, args),
+            )
+        },
+    })
 }
 
 /** Adds form scope without invoking or changing Discord's form component. */
@@ -121,11 +193,23 @@ export function withNativeProfileTestRow(
     name = 'UserProfileEditForm',
 ): ReactElement {
     if (name === 'UserProfileEditForm') {
-        return createElement(
-            InNativeProfileForm.Provider,
-            { key: element.key, value: true },
-            element,
+        return createElement(NativeProfileFormScope, {
+            key: element.key,
+            original: element,
+        })
+    }
+    if (name === 'HeaderTextButton') {
+        const props = element.props as NativeSaveProps
+        if (
+            props.text !== 'Save' ||
+            typeof props.disabled !== 'boolean' ||
+            typeof props.onPress !== 'function'
         )
+            return element
+        return createElement(NativeSaveHeader, {
+            key: element.key,
+            original: element,
+        })
     }
     if (name === 'UserProfileEditTheme') {
         return createElement(NativeThemeAnchor, {

@@ -1,6 +1,7 @@
 import type { ComponentType, ReactElement } from 'react'
 
 const targets = [
+    'HeaderTextButton',
     'UserSettingsEditUserProfile',
     'UserProfileEditForm',
     'UserProfileEditTheme',
