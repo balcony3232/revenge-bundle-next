@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getJsonStorage, pluginStoragePathFor } from '@revenge-mod/json-storage'
-import { ScrollView, View, Text, TextInput, Pressable, Image } from 'react-native'
+import { ScrollView, View, Text, TextInput, Pressable, Image, Share } from 'react-native'
+import { scanProfileModules, formatDiagnosticReport } from './diagnostics'
 import { saveLocalProfile } from '~/nexcord/plugins/profile-storage'
 import type { ProfileAppearance } from '~/nexcord/plugins/profile-editor'
 import { getNativeEditorDiscovery, subscribeNativeEditorDiscovery } from './native-editor'
@@ -11,6 +12,7 @@ const caption = { color: '#bbb', fontSize: 13 } as const
 
 export default function NexcordProfileEditorScreen() {
   const [nativeEditor, setNativeEditor] = useState(getNativeEditorDiscovery())
+  const [report, setReport] = useState('')
   const [userId, setUserId] = useState('')
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -80,6 +82,22 @@ export default function NexcordProfileEditorScreen() {
     <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 6 }}>Nexcord Profile Editor</Text>
     <Text style={{ color: '#bbb', marginBottom: 18 }}>Free local-only customisation. No Discord account changes.</Text>
     <Text style={{ color: '#a99cf8', marginBottom: 12 }}>{nativeEditor.path ? 'Native profile editor module detected (integration pending)' : 'Native profile editor module not yet identified on this Discord version'}</Text>
+    <View style={panel}>
+      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Diagnostics</Text>
+      <Text style={caption}>Open Discord's normal Customize Profile page first, then return here and scan. Only module IDs and relevant export names are collected; no messages or account details.</Text>
+      <Pressable onPress={() => {
+        try { setReport(formatDiagnosticReport(scanProfileModules())) }
+        catch (error) { setReport('Scan failed: ' + String(error)) }
+      }} style={{ backgroundColor: '#7162DA', padding: 12, borderRadius: 9, marginTop: 12 }}>
+        <Text style={{ color: '#fff', fontWeight: '700' }}>Scan loaded modules</Text>
+      </Pressable>
+      {report ? <>
+        <Text selectable style={{ color: '#ddd', marginTop: 12, fontSize: 12 }} numberOfLines={14}>{report}</Text>
+        <Pressable onPress={() => { void Share.share({ message: report }) }} style={{ padding: 12, marginTop: 8, borderRadius: 9, backgroundColor: '#40404c' }}>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>Share / copy report</Text>
+        </Pressable>
+      </> : null}
+    </View>
     <View style={panel}>
       {preview.bannerUrl ? <Image source={{ uri: preview.bannerUrl }} style={{ height: 92, borderRadius: 8, marginBottom: 8 }} /> : <View style={{ height: 54, backgroundColor: accent, borderRadius: 8, marginBottom: 8 }} />}
       {preview.avatarUrl ? <Image source={{ uri: preview.avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} /> : null}
