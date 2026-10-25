@@ -4,11 +4,41 @@ import { getInitializedModuleExports } from '@revenge-mod/modules/metro/utils'
 import { afterJSX } from '@revenge-mod/react/jsx-runtime'
 import { ProfileJSXProbe } from './jsx-probe'
 
-const probe = new ProfileJSXProbe((type, observe) => afterJSX(type, observe))
+let testRowEnabled = false
+let testRowInsertions = 0
+let testRowErrors = 0
+const probe = new ProfileJSXProbe((type, observe, name) =>
+    afterJSX(type, element => {
+        const original = observe(element)
+        if (!testRowEnabled || name !== 'UserProfileEditForm' || !original)
+            return original
+        try {
+            const result =
+                require('./NativeProfileTestRow').withNativeProfileTestRow(
+                    original,
+                )
+            testRowInsertions++
+            return result
+        } catch {
+            testRowErrors++
+            return original
+        }
+    }),
+)
 let unsubscribe: (() => void) | undefined
 
 export function getProfileJSXProbe() {
-    return probe.snapshot()
+    return {
+        ...probe.snapshot(),
+        testRowEnabled,
+        testRowInsertions,
+        testRowErrors,
+    }
+}
+
+export function setNativeProfileTestRowEnabled(enabled: boolean): void {
+    testRowEnabled = enabled
+    if (enabled) startProfileJSXProbe()
 }
 
 export function startProfileJSXProbe(): void {
@@ -21,7 +51,7 @@ export function startProfileJSXProbe(): void {
 }
 
 export function refreshProfileJSXProbe() {
-    if (!probe.snapshot().active) return probe.snapshot()
+    if (!probe.snapshot().active) return getProfileJSXProbe()
     for (const id of [...mInitialized]) {
         try {
             probe.inspect(getInitializedModuleExports(id))
@@ -29,10 +59,11 @@ export function refreshProfileJSXProbe() {
             /* Uninspectable namespaces. */
         }
     }
-    return probe.snapshot()
+    return getProfileJSXProbe()
 }
 
 export function stopProfileJSXProbe(): void {
+    testRowEnabled = false
     unsubscribe?.()
     unsubscribe = undefined
     probe.stop()

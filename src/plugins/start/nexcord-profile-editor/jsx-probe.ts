@@ -6,6 +6,7 @@ const sensitive =
 type Register = (
     type: ComponentType,
     observe: (element: ReactElement) => ReactElement,
+    name: string,
 ) => () => unknown
 export type JSXProbeSnapshot = {
     active: boolean
@@ -93,32 +94,36 @@ export class ProfileJSXProbe {
                     continue
                 }
                 if (this.registrations.has(type)) continue
-                const remove = this.register(type, element => {
-                    if (this.active) {
-                        this.elementCalls++
-                        try {
-                            const descriptors =
-                                Object.getOwnPropertyDescriptors(
-                                    element.props ?? {},
+                const remove = this.register(
+                    type,
+                    element => {
+                        if (this.active) {
+                            this.elementCalls++
+                            try {
+                                const descriptors =
+                                    Object.getOwnPropertyDescriptors(
+                                        element.props ?? {},
+                                    )
+                                const shape = Object.keys(descriptors)
+                                    .filter(key => !sensitive.test(key))
+                                    .slice(0, 40)
+                                    .map(key => {
+                                        const prop = descriptors[key]
+                                        return `${key.slice(0, 80)}:${prop.get || prop.set ? 'accessor' : typeof prop.value}`
+                                    })
+                                    .join(', ')
+                                this.observations.set(
+                                    name,
+                                    shape || '(no non-sensitive props)',
                                 )
-                            const shape = Object.keys(descriptors)
-                                .filter(key => !sensitive.test(key))
-                                .slice(0, 40)
-                                .map(key => {
-                                    const prop = descriptors[key]
-                                    return `${key.slice(0, 80)}:${prop.get || prop.set ? 'accessor' : typeof prop.value}`
-                                })
-                                .join(', ')
-                            this.observations.set(
-                                name,
-                                shape || '(no non-sensitive props)',
-                            )
-                        } catch {
-                            this.errors++
+                            } catch {
+                                this.errors++
+                            }
                         }
-                    }
-                    return element
-                })
+                        return element
+                    },
+                    name,
+                )
                 this.registrations.set(type, remove)
                 this.attached.add(name)
             } catch {
