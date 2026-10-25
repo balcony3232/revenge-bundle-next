@@ -20,12 +20,12 @@ export function scanProfileModules(): DiagnosticResult {
         if (relevant.test(key)) hints.add(key.slice(0, 90))
         const value = (exports as Record<string, unknown>)[key]
         if (typeof value === 'function') {
-          const name = value.displayName || value.name
+          const name = (value as { displayName?: string }).displayName || value.name
           if (typeof name === 'string' && relevant.test(name) && !sensitive.test(name)) hints.add(name.slice(0, 90))
         }
       }
       if (typeof exports === 'function') {
-        const name = exports.displayName || exports.name
+        const name = (exports as { displayName?: string }).displayName || exports.name
         if (typeof name === 'string' && relevant.test(name) && !sensitive.test(name)) hints.add(name.slice(0, 90))
       }
       if (hints.size) matches.push({ id, hints: [...hints].slice(0, 12) })
