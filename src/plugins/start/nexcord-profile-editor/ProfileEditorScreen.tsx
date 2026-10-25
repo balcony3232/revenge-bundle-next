@@ -3,12 +3,14 @@ import { getJsonStorage, pluginStoragePathFor } from '@revenge-mod/json-storage'
 import { ScrollView, View, Text, TextInput, Pressable, Image } from 'react-native'
 import { saveLocalProfile } from '~/nexcord/plugins/profile-storage'
 import type { ProfileAppearance } from '~/nexcord/plugins/profile-editor'
+import { getNativeEditorDiscovery, subscribeNativeEditorDiscovery } from './native-editor'
 
 const panel = { backgroundColor: '#292930', borderRadius: 14, padding: 14, marginBottom: 12 } as const
 const field = { backgroundColor: '#1d1d23', color: '#fff', borderRadius: 9, padding: 12, marginTop: 6 } as const
 const caption = { color: '#bbb', fontSize: 13 } as const
 
 export default function NexcordProfileEditorScreen() {
+  const [nativeEditor, setNativeEditor] = useState(getNativeEditorDiscovery())
   const [userId, setUserId] = useState('')
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -20,6 +22,8 @@ export default function NexcordProfileEditorScreen() {
   const [accent, setAccent] = useState('#7162DA')
   const [status, setStatus] = useState('Enter a Discord user ID and choose your local appearance.')
   const [preview, setPreview] = useState<ProfileAppearance>({})
+
+  useEffect(() => subscribeNativeEditorDiscovery(() => setNativeEditor(getNativeEditorDiscovery())), [])
 
   useEffect(() => {
     let active = true
@@ -75,6 +79,7 @@ export default function NexcordProfileEditorScreen() {
   return <ScrollView style={{ flex: 1, backgroundColor: '#202027' }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
     <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 6 }}>Nexcord Profile Editor</Text>
     <Text style={{ color: '#bbb', marginBottom: 18 }}>Free local-only customisation. No Discord account changes.</Text>
+    <Text style={{ color: '#a99cf8', marginBottom: 12 }}>{nativeEditor.path ? 'Native profile editor module detected (integration pending)' : 'Native profile editor module not yet identified on this Discord version'}</Text>
     <View style={panel}>
       {preview.bannerUrl ? <Image source={{ uri: preview.bannerUrl }} style={{ height: 92, borderRadius: 8, marginBottom: 8 }} /> : <View style={{ height: 54, backgroundColor: accent, borderRadius: 8, marginBottom: 8 }} />}
       {preview.avatarUrl ? <Image source={{ uri: preview.avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} /> : null}
