@@ -12,6 +12,9 @@ export type JSXProbeSnapshot = {
     attached: string[]
     observations: string[]
     errors: number
+    inspectedModules: number
+    skipped: string[]
+    elementCalls: number
 }
 
 /** Observes element metadata without changing elements or calling form callbacks. */
@@ -21,6 +24,9 @@ export class ProfileJSXProbe {
     private attached = new Set<string>()
     private observations = new Map<string, string>()
     private errors = 0
+    private inspectedModules = 0
+    private skipped = new Set<string>()
+    private elementCalls = 0
 
     constructor(private register: Register) {}
 
@@ -29,6 +35,7 @@ export class ProfileJSXProbe {
     }
 
     inspect(namespace: unknown): void {
+        if (this.active) this.inspectedModules++
         if (
             !this.active ||
             !namespace ||
@@ -42,10 +49,21 @@ export class ProfileJSXProbe {
                     name,
                 )
                 const type = descriptor?.value
-                if (typeof type !== 'function' || this.registrations.has(type))
+                if (!descriptor) continue
+                if (descriptor.get || descriptor.set) {
+                    this.skipped.add(`${name}: accessor export (not invoked)`)
                     continue
+                }
+                if (typeof type !== 'function') {
+                    this.skipped.add(
+                        `${name}: ${typeof type} export (unsupported)`,
+                    )
+                    continue
+                }
+                if (this.registrations.has(type)) continue
                 const remove = this.register(type, element => {
                     if (this.active) {
+                        this.elementCalls++
                         try {
                             const descriptors =
                                 Object.getOwnPropertyDescriptors(
@@ -85,6 +103,9 @@ export class ProfileJSXProbe {
                 ([name, shape]) => `${name}: ${shape}`,
             ),
             errors: this.errors,
+            inspectedModules: this.inspectedModules,
+            skipped: [...this.skipped],
+            elementCalls: this.elementCalls,
         }
     }
 

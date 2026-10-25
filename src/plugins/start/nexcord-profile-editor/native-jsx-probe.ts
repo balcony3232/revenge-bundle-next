@@ -17,6 +17,11 @@ export function startProfileJSXProbe(): void {
     unsubscribe = onAnyModuleInitialized((_id, namespace) =>
         probe.inspect(namespace),
     )
+    refreshProfileJSXProbe()
+}
+
+export function refreshProfileJSXProbe() {
+    if (!probe.snapshot().active) return probe.snapshot()
     for (const id of [...mInitialized]) {
         try {
             probe.inspect(getInitializedModuleExports(id))
@@ -24,6 +29,7 @@ export function startProfileJSXProbe(): void {
             /* Uninspectable namespaces. */
         }
     }
+    return probe.snapshot()
 }
 
 export function stopProfileJSXProbe(): void {

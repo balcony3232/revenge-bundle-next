@@ -18,6 +18,7 @@ import {
 } from './native-editor'
 import {
     getProfileJSXProbe,
+    refreshProfileJSXProbe,
     startProfileJSXProbe,
     stopProfileJSXProbe,
 } from './native-jsx-probe'
@@ -40,6 +41,7 @@ const caption = { color: '#bbb', fontSize: 13 } as const
 
 export default function NexcordProfileEditorScreen() {
     const [jsxProbe, setJSXProbe] = useState(getProfileJSXProbe)
+    const [jsxRefreshes, setJSXRefreshes] = useState(0)
     const [nativeEditor, setNativeEditor] = useState(getNativeEditorDiscovery())
     const [report, setReport] = useState('')
     const [saveReport, setSaveReport] = useState('')
@@ -357,13 +359,34 @@ export default function NexcordProfileEditorScreen() {
                     </Text>
                 </Pressable>
                 <Pressable
-                    onPress={() => setJSXProbe(getProfileJSXProbe())}
+                    onPress={() => {
+                        setJSXProbe(refreshProfileJSXProbe())
+                        setJSXRefreshes(count => count + 1)
+                    }}
                     style={{ padding: 12 }}
                 >
                     <Text style={{ color: '#a99cf8' }}>
                         Refresh JSX metadata
                     </Text>
                 </Pressable>
+                <Text selectable style={caption}>
+                    Probe v2: {jsxProbe.active ? 'ON' : 'OFF'} · Refreshes:{' '}
+                    {jsxRefreshes} · Module inspections:{' '}
+                    {jsxProbe.inspectedModules} · JSX calls:{' '}
+                    {jsxProbe.elementCalls}
+                </Text>
+                <Text style={caption}>
+                    {!jsxProbe.active
+                        ? 'Probe is off. Enable it before visiting Customize Profile.'
+                        : jsxProbe.attached.length === 0
+                          ? 'Probe is on, but no supported profile exports were found. Refresh cannot collect JSX props until an observer attaches.'
+                          : jsxProbe.elementCalls === 0
+                            ? 'Observer attached, but no matching JSX elements have been seen yet.'
+                            : 'Profile JSX metadata collected.'}
+                </Text>
+                <Text selectable style={caption}>
+                    {jsxProbe.skipped.join('\n')}
+                </Text>
                 <Text selectable style={caption}>
                     Attached: {jsxProbe.attached.join(', ') || 'none'} · Errors:{' '}
                     {jsxProbe.errors}
@@ -378,7 +401,7 @@ export default function NexcordProfileEditorScreen() {
                         setJSXProbe(snapshot)
                         void Share.share({
                             message:
-                                'Nexcord JSX metadata probe\n' +
+                                'Nexcord JSX metadata probe v2\n' +
                                 JSON.stringify(snapshot),
                         })
                     }}

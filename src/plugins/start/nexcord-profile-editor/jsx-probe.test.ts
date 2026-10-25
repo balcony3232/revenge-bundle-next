@@ -14,6 +14,7 @@ describe('profile JSX metadata probe', () => {
         const form = () => null
         probe.inspect({ UserProfileEditForm: form })
         expect(register).not.toHaveBeenCalled()
+        expect(probe.snapshot().inspectedModules).toBe(0)
         probe.start()
         probe.inspect({ UserProfileEditForm: form })
         probe.inspect({ UserProfileEditForm: form })
@@ -33,6 +34,7 @@ describe('profile JSX metadata probe', () => {
             key: null,
         }) as ReactElement
         expect(callbacks[0](element)).toBe(element)
+        expect(probe.snapshot().elementCalls).toBe(1)
         expect(save).not.toHaveBeenCalled()
         expect(getter).not.toHaveBeenCalled()
         const report = JSON.stringify(probe.snapshot())
@@ -66,6 +68,13 @@ describe('profile JSX metadata probe', () => {
             probe.inspect(value)
         expect(getter).not.toHaveBeenCalled()
         expect(register).not.toHaveBeenCalled()
+        expect(probe.snapshot().skipped).toContain(
+            'UserProfileEditForm: accessor export (not invoked)',
+        )
+        expect(probe.snapshot().skipped).toContain(
+            'UserProfileEditForm: object export (unsupported)',
+        )
+        expect(probe.snapshot().inspectedModules).toBe(6)
     })
 
     it('contains inspection failures and still returns the original element', () => {
