@@ -3,11 +3,12 @@ import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import manifest from './manifest.json'
 import { loadLocalProfiles } from '~/nexcord/plugins/profile-storage'
 import { clientProfileOverrides } from '~/nexcord/plugins/profile-overrides'
+import { beginNativeEditorDiscovery, stopNativeEditorIntegration } from './native-editor'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 
 /**
- * Crash isolation stage C: restore settings, storage, and override manager activation.
- * Deliberately do not start native discovery or patch Discord functions. No Discord function patching is performed here.
+ * Crash isolation stage D: restore read-only native discovery startup.
+ * Native discovery remains read-only; no Discord functions are patched. No Discord function patching is performed here.
  */
 const EditorSetting: SettingsItem = {
   parent: null,
@@ -23,6 +24,7 @@ const EditorSetting: SettingsItem = {
 export default registerInternalPlugin(manifest, {
   start() {
     clientProfileOverrides.setEnabled(true)
+    beginNativeEditorDiscovery()
     void loadLocalProfiles().catch(error => nativeLoggingHook('Nexcord profile load failed: ' + String(error), 2))
     registerSettingsItems({ NexcordProfileEditor: EditorSetting })
     registerSettingsSection('NEXCORD_PROFILE', {
@@ -30,5 +32,5 @@ export default registerInternalPlugin(manifest, {
       settings: ['NexcordProfileEditor'],
     })
   },
-  stop() { clientProfileOverrides.setEnabled(false) },
+  stop() { stopNativeEditorIntegration(); clientProfileOverrides.setEnabled(false) },
 })
