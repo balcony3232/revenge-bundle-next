@@ -1,0 +1,7 @@
+{
+  "id": "nexcord.permission-simulator",
+  "name": "Nexcord Permission Simulator",
+  "description": "Preview permissions locally; does not grant access.",
+  "author": "Nexcord",
+  "icon": "EyeIcon"
+}
