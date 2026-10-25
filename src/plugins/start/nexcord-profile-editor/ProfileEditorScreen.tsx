@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getJsonStorage, pluginStoragePathFor } from '@revenge-mod/json-storage'
 import { ScrollView, View, Text, TextInput, Pressable, Image } from 'react-native'
 import { saveLocalProfile } from '~/nexcord/plugins/profile-storage'
 import type { ProfileAppearance } from '~/nexcord/plugins/profile-editor'
@@ -19,6 +20,30 @@ export default function NexcordProfileEditorScreen() {
   const [accent, setAccent] = useState('#7162DA')
   const [status, setStatus] = useState('Enter a Discord user ID and choose your local appearance.')
   const [preview, setPreview] = useState<ProfileAppearance>({})
+
+  useEffect(() => {
+    let active = true
+    const storage = getJsonStorage<{ entries: { userId: string; appearance: ProfileAppearance }[] }>(
+      pluginStoragePathFor('nexcord.profile-editor'),
+    )
+    void storage.get().then(saved => {
+      if (!active) return
+      const first = saved?.entries?.[0]
+      if (!first) return
+      setUserId(first.userId)
+      setUsername(first.appearance.username ?? '')
+      setDisplayName(first.appearance.displayName ?? '')
+      setBio(first.appearance.bio ?? '')
+      setAvatarUrl(first.appearance.avatarUrl ?? '')
+      setBannerUrl(first.appearance.bannerUrl ?? '')
+      setBadgeIds(first.appearance.badgeIds?.join(', ') ?? '')
+      setEffectId(first.appearance.effectId ?? '')
+      setAccent(first.appearance.accentColor === undefined ? '#7162DA' : '#' + first.appearance.accentColor.toString(16).padStart(6, '0'))
+      setPreview(first.appearance)
+      setStatus('Restored your locally saved appearance. Native Discord rendering is still pending.')
+    }).catch(() => { if (active) setStatus('Could not restore saved appearance') })
+    return () => { active = false }
+  }, [])
 
   const save = async () => {
     try {
