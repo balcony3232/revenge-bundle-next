@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, TextInput, Pressable, Image } from 'react-native'
-import { clientProfileOverrides } from '~/nexcord/plugins/profile-overrides'
+import { saveLocalProfile } from '~/nexcord/plugins/profile-storage'
 import type { ProfileAppearance } from '~/nexcord/plugins/profile-editor'
 
 const panel = { backgroundColor: '#292930', borderRadius: 14, padding: 14, marginBottom: 12 } as const
@@ -20,7 +20,7 @@ export default function NexcordProfileEditorScreen() {
   const [status, setStatus] = useState('Enter a Discord user ID and choose your local appearance.')
   const [preview, setPreview] = useState<ProfileAppearance>({})
 
-  const save = () => {
+  const save = async () => {
     try {
       const appearance: ProfileAppearance = {
         ...(username.trim() ? { username: username.trim() } : {}),
@@ -32,9 +32,9 @@ export default function NexcordProfileEditorScreen() {
         ...(effectId.trim() ? { effectId: effectId.trim() } : {}),
         ...( /^#[0-9a-fA-F]{6}$/.test(accent) ? { accentColor: Number.parseInt(accent.slice(1), 16) } : {}),
       }
-      clientProfileOverrides.set(userId.trim(), appearance)
+      await saveLocalProfile(userId.trim(), appearance)
       setPreview(appearance)
-      setStatus('Saved in this session. Discord-wide rendering and persistent storage are not yet connected.')
+      setStatus('Saved locally on this device. Discord-wide rendering is not yet connected.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not save appearance')
     }
