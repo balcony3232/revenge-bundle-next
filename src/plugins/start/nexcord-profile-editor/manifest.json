@@ -1,0 +1,7 @@
+{
+  "id": "nexcord.profile-editor",
+  "name": "Nexcord Profile Editor",
+  "description": "Local-only custom profile appearances. Render integration in progress.",
+  "author": "Nexcord",
+  "icon": "UserIcon"
+}
