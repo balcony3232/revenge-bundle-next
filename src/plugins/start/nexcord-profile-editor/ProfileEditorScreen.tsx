@@ -13,6 +13,7 @@ const caption = { color: '#bbb', fontSize: 13 } as const
 export default function NexcordProfileEditorScreen() {
   const [nativeEditor, setNativeEditor] = useState(getNativeEditorDiscovery())
   const [report, setReport] = useState('')
+  const [saveReport, setSaveReport] = useState('')
   const [userId, setUserId] = useState('')
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
@@ -82,6 +83,13 @@ export default function NexcordProfileEditorScreen() {
     <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 6 }}>Nexcord Profile Editor</Text>
     <Text style={{ color: '#bbb', marginBottom: 18 }}>Free local-only customisation. No Discord account changes.</Text>
     <Text style={{ color: '#a99cf8', marginBottom: 12 }}>{nativeEditor.path ? 'Native profile editor module detected (integration pending)' : 'Native profile editor module not yet identified on this Discord version'}</Text>
+    <View style={panel}>
+      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Native Save integration</Text>
+      <Text style={caption}>Detected modules: {nativeEditor.exportNames.length ? nativeEditor.exportNames.join(', ') : 'none yet'}</Text>
+      <Text style={{ color: '#a99cf8', marginTop: 8 }}>{nativeEditor.exportNames.includes('saveProfileAndAccountChanges') ? 'Save handler located. Not hooked yet; Discord Save is unchanged.' : 'Save handler not detected yet. Open the native Profile screen, then return.'}</Text>
+      <Pressable onPress={() => { const message = 'Nexcord native Save discovery v1\\n' + nativeEditor.exportNames.map(name => name + ': detected').join('\\n') + '\\nSave hook: disabled (safe mode)'; setSaveReport(message); void Share.share({ message }) }} style={{ backgroundColor: '#40404c', padding: 12, borderRadius: 9, marginTop: 12 }}><Text style={{ color: '#fff', fontWeight: '700' }}>Share Save diagnostics</Text></Pressable>
+      {saveReport ? <Text selectable style={{ color: '#bbb', fontSize: 12, marginTop: 8 }}>{saveReport}</Text> : null}
+    </View>
     <View style={panel}>
       <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Diagnostics</Text>
       <Text style={caption}>Open Discord's normal Customize Profile page first, then return here and scan. Only module IDs and relevant export names are collected; no messages or account details.</Text>
