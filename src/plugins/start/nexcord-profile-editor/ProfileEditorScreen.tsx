@@ -86,8 +86,10 @@ export default function NexcordProfileEditorScreen() {
     <View style={panel}>
       <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Native Save integration</Text>
       <Text style={caption}>Detected modules: {nativeEditor.exportNames.length ? nativeEditor.exportNames.join(', ') : 'none yet'}</Text>
-      <Text style={{ color: '#a99cf8', marginTop: 8 }}>{nativeEditor.exportNames.includes('saveProfileAndAccountChanges') ? 'Save handler located. Not hooked yet; Discord Save is unchanged.' : 'Save handler not detected yet. Open the native Profile screen, then return.'}</Text>
-      <Pressable onPress={() => { const message = 'Nexcord native Save discovery v1\\n' + nativeEditor.exportNames.map(name => name + ': detected').join('\\n') + '\\nSave hook: disabled (safe mode)'; setSaveReport(message); void Share.share({ message }) }} style={{ backgroundColor: '#40404c', padding: 12, borderRadius: 9, marginTop: 12 }}><Text style={{ color: '#fff', fontWeight: '700' }}>Share Save diagnostics</Text></Pressable>
+      <Text style={{ color: '#ddd', marginTop: 8 }}>Observed native Save calls: {nativeEditor.saveCalls}</Text>
+      <Text selectable style={caption}>Argument shapes: {nativeEditor.saveArgumentShapes.join(' | ') || 'none observed'}</Text>
+      <Text style={{ color: '#a99cf8', marginTop: 8 }}>{nativeEditor.exportNames.includes('saveProfileAndAccountChanges') ? 'Save handler located. Metadata-only observer active; Discord Save behaviour is unchanged.' : 'Save handler not detected yet. Open the native Profile screen, then return.'}</Text>
+      <Pressable onPress={() => { const message = 'Nexcord native Save observation v2\\n' + nativeEditor.exportNames.map(name => name + ': detected').join('\\n') + '\\nObserved Save calls: ' + nativeEditor.saveCalls + '\\nArgument shapes: ' + (nativeEditor.saveArgumentShapes.join(' | ') || 'none'); setSaveReport(message); void Share.share({ message }) }} style={{ backgroundColor: '#40404c', padding: 12, borderRadius: 9, marginTop: 12 }}><Text style={{ color: '#fff', fontWeight: '700' }}>Share Save diagnostics</Text></Pressable>
       {saveReport ? <Text selectable style={{ color: '#bbb', fontSize: 12, marginTop: 8 }}>{saveReport}</Text> : null}
     </View>
     <View style={panel}>
