@@ -1,6 +1,8 @@
 import { getModules } from '@revenge-mod/modules/finders'
 import { withProps } from '@revenge-mod/modules/finders/filters'
 import { before } from '@revenge-mod/patcher'
+import { mInitialized } from '@revenge-mod/modules/metro/patches'
+import { getInitializedModuleExports } from '@revenge-mod/modules/metro/utils'
 
 /**
  * Locate Discord's actual profile form and save action.
@@ -18,9 +20,13 @@ export type NativeEditorDiscovery = {
   hookCalls: number
   observerStatus: string[]
   exportDiagnostics: string[]
+  discoveryStarted: boolean
+  scannedModules: number
+  scanErrors: number
+  discoveryErrors: string[]
 }
 
-const state: NativeEditorDiscovery = { path: null, exportNames: [], saveCalls: 0, saveArgumentShapes: [], formCalls: 0, hookCalls: 0, observerStatus: [], exportDiagnostics: [] }
+const state: NativeEditorDiscovery = { path: null, exportNames: [], saveCalls: 0, saveArgumentShapes: [], formCalls: 0, hookCalls: 0, observerStatus: [], exportDiagnostics: [], discoveryStarted: false, scannedModules: 0, scanErrors: 0, discoveryErrors: [] }
 const listeners = new Set<() => void>()
 let started = false
 const unsubscribers: (() => void)[] = []
@@ -40,7 +46,7 @@ function notify(): void {
 }
 
 export function getNativeEditorDiscovery(): NativeEditorDiscovery {
-  return { path: state.path, exportNames: [...state.exportNames], saveCalls: state.saveCalls, saveArgumentShapes: [...state.saveArgumentShapes], formCalls: state.formCalls, hookCalls: state.hookCalls, observerStatus: [...state.observerStatus], exportDiagnostics: [...state.exportDiagnostics] }
+  return { path: state.path, exportNames: [...state.exportNames], saveCalls: state.saveCalls, saveArgumentShapes: [...state.saveArgumentShapes], formCalls: state.formCalls, hookCalls: state.hookCalls, observerStatus: [...state.observerStatus], exportDiagnostics: [...state.exportDiagnostics], discoveryStarted: state.discoveryStarted, scannedModules: state.scannedModules, scanErrors: state.scanErrors, discoveryErrors: [...state.discoveryErrors] }
 }
 
 export function subscribeNativeEditorDiscovery(listener: () => void): () => void {
@@ -51,6 +57,8 @@ export function subscribeNativeEditorDiscovery(listener: () => void): () => void
 export function beginNativeEditorDiscovery(): void {
   if (started) return
   started = true
+  state.discoveryStarted = true
+  notify()
 
   const targets = [
     'UserSettingsEditUserProfile',
@@ -104,9 +112,39 @@ export function beginNativeEditorDiscovery(): void {
       }, { cached: true, returnNamespace: true })
       unsubscribers.push(unsub)
     } catch (error) {
+      state.discoveryErrors.push(name + ': ' + String(error).slice(0, 160))
+      notify()
       nativeLoggingHook('Nexcord profile discovery failed: ' + String(error), 2)
     }
   }
+}
+
+/** Recheck initialized Metro exports without mutating Discord's profile state. */
+export function rescanNativeEditorModules(): void {
+  const targets = ['UserSettingsEditUserProfile', 'UserProfileEditForm', 'useUserProfileEditForm', 'saveProfileAndAccountChanges']
+  state.scannedModules = 0
+  state.scanErrors = 0
+  state.discoveryErrors = []
+  for (const id of mInitialized) {
+    state.scannedModules++
+    try {
+      const namespace = getInitializedModuleExports(id)
+      if (!namespace || (typeof namespace !== 'object' && typeof namespace !== 'function')) continue
+      for (const name of targets) {
+        if (!Object.prototype.hasOwnProperty.call(namespace, name)) continue
+        const value = (namespace as Record<string, unknown>)[name]
+        state.exportNames = [...new Set([...state.exportNames, name])]
+        const descriptor = Object.getOwnPropertyDescriptor(namespace, name)
+        const diagnostic = name + ': module=' + id + ', type=' + typeof value + ', descriptor=' + (descriptor?.get ? 'getter' : descriptor ? 'value' : 'missing')
+        state.exportDiagnostics = [...state.exportDiagnostics.filter(item => !item.startsWith(name + ':')), diagnostic]
+        if (!state.path) state.path = 'Native profile editor module located'
+      }
+    } catch (error) {
+      state.scanErrors++
+      if (state.discoveryErrors.length < 5) state.discoveryErrors.push('Module ' + id + ': ' + String(error).slice(0, 120))
+    }
+  }
+  notify()
 }
 
 export function stopNativeEditorIntegration(): void {
@@ -123,5 +161,9 @@ export function stopNativeEditorIntegration(): void {
   state.hookCalls = 0
   state.observerStatus = []
   state.exportDiagnostics = []
+  state.discoveryStarted = false
+  state.scannedModules = 0
+  state.scanErrors = 0
+  state.discoveryErrors = []
   notify()
 }
