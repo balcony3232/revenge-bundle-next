@@ -151,7 +151,24 @@ function NativeProfileFormScope({ original }: { original: ReactElement }) {
     )
 }
 
-type NativeSaveProps = { text?: unknown; disabled?: unknown; onPress?: unknown }
+type NativeSaveProps = {
+    label?: unknown
+    text?: unknown
+    disabled?: unknown
+    onPress?: unknown
+}
+function isNativeSaveHeader(
+    props: NativeSaveProps,
+): props is NativeSaveProps & {
+    disabled: boolean
+    onPress: (...args: unknown[]) => unknown
+} {
+    return (
+        (props.label ?? props.text) === 'Save' &&
+        typeof props.disabled === 'boolean' &&
+        typeof props.onPress === 'function'
+    )
+}
 function NativeSaveHeader({ original }: { original: ReactElement }) {
     const route = useContext(RouteContext)
     useSyncExternalStore(
@@ -165,14 +182,7 @@ function NativeSaveHeader({ original }: { original: ReactElement }) {
     )
     useEffect(() => session?.connectHeader(), [session])
     const props = original.props as NativeSaveProps
-    if (
-        !session ||
-        !draft ||
-        props.text !== 'Save' ||
-        typeof props.disabled !== 'boolean' ||
-        typeof props.onPress !== 'function'
-    )
-        return original
+    if (!session || !draft || !isNativeSaveHeader(props)) return original
     if (!draft.dirty && !draft.saving) return original
     if (!draft.valid && !draft.saving) return original
     const nativeDirty = !props.disabled
@@ -200,12 +210,7 @@ export function withNativeProfileTestRow(
     }
     if (name === 'HeaderTextButton') {
         const props = element.props as NativeSaveProps
-        if (
-            props.text !== 'Save' ||
-            typeof props.disabled !== 'boolean' ||
-            typeof props.onPress !== 'function'
-        )
-            return element
+        if (!isNativeSaveHeader(props)) return element
         return createElement(NativeSaveHeader, {
             key: element.key,
             original: element,

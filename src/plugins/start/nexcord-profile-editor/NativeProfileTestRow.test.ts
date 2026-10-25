@@ -68,7 +68,7 @@ it('preserves the native callback receiver, arguments, and promise for mixed edi
                 null,
                 withNativeProfileTestRow(
                     createElement(header, {
-                        text: 'Save',
+                        label: 'Save',
                         disabled: false,
                         onPress: nativeSave,
                     }),
@@ -216,75 +216,79 @@ describe('native profile information row', () => {
         })
     })
 
-    it('enables the same Save button for local-only edits, bypasses native submit, and restores the saved colour', async () => {
-        const nativeSave = vi.fn()
-        const theme = () => createElement('NativeTheme')
-        const header = (props: object) =>
-            createElement('NativeSaveButton', props)
-        const form = (props: { currentUser: { id: string } }) =>
-            createElement(
-                'NativeForm',
-                props,
-                withNativeProfileTestRow(
-                    createElement(theme),
-                    'UserProfileEditTheme',
-                ),
+    it.each(['text', 'label'] as const)(
+        'enables the %s Save button for local-only edits, bypasses native submit, and restores the saved colour',
+        async caption => {
+            const nativeSave = vi.fn()
+            const theme = () => createElement('NativeTheme')
+            const header = (props: object) =>
+                createElement('NativeSaveButton', props)
+            const form = (props: { currentUser: { id: string } }) =>
+                createElement(
+                    'NativeForm',
+                    props,
+                    withNativeProfileTestRow(
+                        createElement(theme),
+                        'UserProfileEditTheme',
+                    ),
+                )
+            const screen = (userId = '123456789012345678') =>
+                createElement(
+                    Fragment,
+                    null,
+                    withNativeProfileTestRow(
+                        createElement(header, {
+                            key: 'save',
+                            [caption]: 'Save',
+                            disabled: true,
+                            onPress: nativeSave,
+                        }),
+                        'HeaderTextButton',
+                    ),
+                    withNativeProfileTestRow(
+                        createElement(form, {
+                            key: 'form',
+                            currentUser: { id: userId },
+                        }),
+                    ),
+                )
+            let renderer!: ReturnType<typeof create>
+            await act(async () => {
+                renderer = create(screen())
+            })
+            const button = () => renderer.root.findByType('NativeSaveButton')
+            const field = () => renderer.root.findByType('TextInput')
+            expect(button().props.disabled).toBe(true)
+            await act(async () => {
+                field().props.onChangeText('#FF5500')
+            })
+            expect(button().props.disabled).toBe(false)
+            expect(button().props[caption]).toBe('Save')
+            await act(async () => {
+                await button().props.onPress()
+            })
+            expect(nativeSave).not.toHaveBeenCalled()
+            expect(fake.save).toHaveBeenCalledExactlyOnceWith(
+                '123456789012345678',
+                '#FF5500',
             )
-        const screen = (userId = '123456789012345678') =>
-            createElement(
-                Fragment,
-                null,
-                withNativeProfileTestRow(
-                    createElement(header, {
-                        key: 'save',
-                        text: 'Save',
-                        disabled: true,
-                        onPress: nativeSave,
-                    }),
-                    'HeaderTextButton',
-                ),
-                withNativeProfileTestRow(
-                    createElement(form, {
-                        key: 'form',
-                        currentUser: { id: userId },
-                    }),
-                ),
-            )
-        let renderer!: ReturnType<typeof create>
-        await act(async () => {
-            renderer = create(screen())
-        })
-        const button = () => renderer.root.findByType('NativeSaveButton')
-        const field = () => renderer.root.findByType('TextInput')
-        expect(button().props.disabled).toBe(true)
-        await act(async () => {
-            field().props.onChangeText('#FF5500')
-        })
-        expect(button().props.disabled).toBe(false)
-        await act(async () => {
-            await button().props.onPress()
-        })
-        expect(nativeSave).not.toHaveBeenCalled()
-        expect(fake.save).toHaveBeenCalledExactlyOnceWith(
-            '123456789012345678',
-            '#FF5500',
-        )
-        expect(button().props.disabled).toBe(true)
-        await act(async () => {
-            renderer.unmount()
-        })
-        await act(async () => {
-            renderer = create(screen())
-        })
-        expect(field().props.value).toBe('#FF5500')
-        await act(async () => {
-            renderer.update(screen('987654321098765432'))
-        })
-        expect(field().props.value).toBe('#7162DA')
-        await act(async () => {
-            renderer.unmount()
-        })
-    })
+            expect(button().props.disabled).toBe(true)
+            await act(async () => {
+                renderer.unmount()
+            })
+            await act(async () => {
+                renderer = create(screen())
+            })
+            expect(field().props.value).toBe('#FF5500')
+            await act(async () => {
+                renderer.update(screen('987654321098765432'))
+            })
+            expect(field().props.value).toBe('#7162DA')
+            await act(async () => {
+                renderer.unmount()
+            })
+        },
+    )
 
     it('leaves Save on another route unchanged while a local draft is dirty', async () => {
         const nativeSave = vi.fn()

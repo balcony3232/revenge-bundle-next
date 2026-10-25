@@ -186,7 +186,7 @@ export default function NexcordProfileEditorScreen() {
             </Text>
             <View style={panel}>
                 <Text selectable style={caption}>
-                    Native accent Save v3 · Build {__BUILD_COMMIT__}
+                    Native accent Save v4 · Build {__BUILD_COMMIT__}
                 </Text>
                 <Text
                     style={{
