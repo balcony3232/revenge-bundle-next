@@ -1,0 +1,7 @@
+{
+  "id": "nexcord.permission-inspector",
+  "name": "Nexcord Permission Inspector",
+  "description": "Inspect accessible Discord role and channel permission data.",
+  "author": "Nexcord",
+  "icon": "ShieldIcon"
+}
