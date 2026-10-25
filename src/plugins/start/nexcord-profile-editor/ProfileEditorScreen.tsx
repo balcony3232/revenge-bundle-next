@@ -186,7 +186,7 @@ export default function NexcordProfileEditorScreen() {
             </Text>
             <View style={panel}>
                 <Text selectable style={caption}>
-                    Native row test v1 · Build {__BUILD_COMMIT__}
+                    Native accent preview v2 · Build {__BUILD_COMMIT__}
                 </Text>
                 <Text
                     style={{
@@ -196,13 +196,14 @@ export default function NexcordProfileEditorScreen() {
                         marginTop: 16,
                     }}
                 >
-                    Native profile test row
+                    Native local accent preview
                 </Text>
                 <Text style={caption}>
-                    Shows a Nexcord information row alongside the normal profile
-                    form. Enable, then reopen Customize Profile and scroll to
-                    the bottom. No cosmetic values are edited or saved. Off
-                    after app restart.
+                    Enable, reopen Customize Profile, then find Nexcord below
+                    the profile theme section. Change the local accent and check
+                    its preview. This draft resets when the editor closes.
+                    Discord Save does not save the local draft yet. Off after
+                    app restart.
                 </Text>
                 <Pressable
                     onPress={() => {
@@ -220,12 +221,12 @@ export default function NexcordProfileEditorScreen() {
                 >
                     <Text style={{ color: '#fff', fontWeight: '700' }}>
                         {jsxProbe.testRowEnabled
-                            ? 'Disable native test row'
-                            : 'Enable native test row'}
+                            ? 'Disable local accent preview'
+                            : 'Enable local accent preview'}
                     </Text>
                 </Pressable>
                 <Text selectable style={caption}>
-                    Test row: {jsxProbe.testRowEnabled ? 'ON' : 'OFF'} ·
+                    Local preview: {jsxProbe.testRowEnabled ? 'ON' : 'OFF'} ·
                     Insertions: {jsxProbe.testRowInsertions} · Row errors:{' '}
                     {jsxProbe.testRowErrors}
                 </Text>
@@ -434,6 +435,11 @@ export default function NexcordProfileEditorScreen() {
                 </Text>
                 <Text selectable style={caption}>
                     {jsxProbe.skipped.join('\n')}
+                </Text>
+                <Text selectable style={caption}>
+                    Native form lifecycle (event counts only):{' '}
+                    {JSON.stringify(jsxProbe.lifecycleEvents)} · Observer
+                    errors: {jsxProbe.lifecycleErrors}
                 </Text>
                 <Text selectable style={caption}>
                     Attached: {jsxProbe.attached.join(', ') || 'none'} · Errors:{' '}

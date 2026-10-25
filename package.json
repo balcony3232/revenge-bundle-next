@@ -21,6 +21,7 @@
     "@types/react": "^19.2.18",
     "buffer": "^6.0.3",
     "react": "19.2.3",
+    "react-test-renderer": "19.2.3",
     "react-native": "0.86.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"

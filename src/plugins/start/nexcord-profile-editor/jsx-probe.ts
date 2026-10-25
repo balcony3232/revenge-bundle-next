@@ -1,6 +1,12 @@
 import type { ComponentType, ReactElement } from 'react'
 
-const targets = ['UserSettingsEditUserProfile', 'UserProfileEditForm'] as const
+const targets = [
+    'UserSettingsEditUserProfile',
+    'UserProfileEditForm',
+    'UserProfileEditTheme',
+    'UserProfileEditFormTextField',
+    'UserProfileEditFormButton',
+] as const
 const sensitive =
     /token|secret|password|email|phone|session|auth|cookie|user.?id/i
 type Register = (
