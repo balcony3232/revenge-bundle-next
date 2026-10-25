@@ -23,6 +23,11 @@ jobs:
         run: deno install --frozen
       - name: Build production bundle
         run: deno run build
+        env:
+          REVENGE_DISCORD_SERVER_URL: https://discord.gg/ddcQf3s2Uq
+          REVENGE_SOURCE_REPOSITORY_URL: https://github.com/balcony3232/revenge-bundle-next
+          REVENGE_LICENSE_URL: https://github.com/balcony3232/revenge-bundle-next/blob/nexcord-development/LICENSE
+          REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL: https://github.com/revenge-mod
       - name: Upload Nexcord test bundle
         uses: actions/upload-artifact@v4
         with:
