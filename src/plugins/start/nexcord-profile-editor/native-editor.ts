@@ -1,47 +1,31 @@
 import { getModules } from '@revenge-mod/modules/finders'
 import { withProps } from '@revenge-mod/modules/finders/filters'
-import { after } from '@revenge-mod/patcher'
-import { createElement, useState } from 'react'
-import { Modal, Pressable, Text, View } from 'react-native'
-import type { ReactNode } from 'react'
 
-export type NativeEditorDiscovery = { path: string | null; exportNames: string[] }
+/**
+ * Locate Discord's actual profile form and save action.
+ *
+ * The normal Save button calls Discord's own save handler. Do not patch that
+ * handler until the pending form shape is known: doing so could accidentally
+ * upload local-only appearance values to Discord.
+ */
+export type NativeEditorDiscovery = {
+  path: string | null
+  exportNames: string[]
+}
+
 const state: NativeEditorDiscovery = { path: null, exportNames: [] }
 const listeners = new Set<() => void>()
 let started = false
-let unpatch: (() => void) | undefined
-let unsubscribe: (() => void) | undefined
+const unsubscribers: (() => void)[] = []
 
-function notify() {
+function notify(): void {
   for (const listener of listeners) listener()
-}
-
-function NativeEditorWithNexcord({ native }: { native: ReactNode }) {
-  const [open, setOpen] = useState(false)
-  return createElement(
-    View,
-    { style: { flex: 1 } },
-    native,
-    createElement(View, { pointerEvents: 'box-none', style: { position: 'absolute', right: 14, bottom: 18 } },
-      createElement(Pressable, {
-        accessibilityRole: 'button',
-        onPress: () => setOpen(true),
-        style: { backgroundColor: '#7162DA', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 15, elevation: 6 },
-      }, createElement(Text, { style: { color: '#fff', fontWeight: '700' } }, 'Nexcord Local')),
-    ),
-    createElement(Modal, { visible: open, animationType: 'slide', onRequestClose: () => setOpen(false) },
-      createElement(View, { style: { flex: 1, backgroundColor: '#202027' } },
-        createElement(Pressable, { onPress: () => setOpen(false), style: { padding: 16, backgroundColor: '#292930' } },
-          createElement(Text, { style: { color: '#fff', fontWeight: '700' } }, '← Back to Customize Profile')),
-        createElement(require('./ProfileEditorScreen').default),
-      ),
-    ),
-  )
 }
 
 export function getNativeEditorDiscovery(): NativeEditorDiscovery {
   return { path: state.path, exportNames: [...state.exportNames] }
 }
+
 export function subscribeNativeEditorDiscovery(listener: () => void): () => void {
   listeners.add(listener)
   return () => { listeners.delete(listener) }
@@ -50,29 +34,38 @@ export function subscribeNativeEditorDiscovery(listener: () => void): () => void
 export function beginNativeEditorDiscovery(): void {
   if (started) return
   started = true
-  unsubscribe = getModules(withProps('UserSettingsEditUserProfile'), exports => {
-    if (unpatch) return
-    const module = exports as { UserSettingsEditUserProfile: (...args: unknown[]) => ReactNode }
-    if (typeof module.UserSettingsEditUserProfile !== 'function') return
+
+  const targets = [
+    'UserSettingsEditUserProfile',
+    'UserProfileEditForm',
+    'useUserProfileEditForm',
+    'saveProfileAndAccountChanges',
+  ] as const
+
+  for (const name of targets) {
     try {
-      unpatch = after(module, 'UserSettingsEditUserProfile', native =>
-        createElement(NativeEditorWithNexcord, { native }),
-      )
-      state.path = 'UserSettingsEditUserProfile (runtime export)'
-      state.exportNames = ['UserSettingsEditUserProfile']
-      notify()
+      const unsub = getModules(withProps(name), exports => {
+        if (!started || !exports || typeof exports !== 'object') return
+        const names = Object.keys(exports as Record<string, unknown>)
+        if (!names.includes(name)) return
+        state.exportNames = [...new Set([...state.exportNames, name])]
+        if (name === 'saveProfileAndAccountChanges') {
+          state.path = 'Native profile Save handler located (not modified)'
+        } else if (!state.path) {
+          state.path = 'Native profile editor module located'
+        }
+        notify()
+      }, { cached: true, returnNamespace: true })
+      unsubscribers.push(unsub)
     } catch (error) {
-      nativeLoggingHook('Nexcord native editor hook failed: ' + String(error), 2)
+      nativeLoggingHook('Nexcord profile discovery failed: ' + String(error), 2)
     }
-  }, { cached: true, returnNamespace: true })
+  }
 }
 
 export function stopNativeEditorIntegration(): void {
-  unsubscribe?.()
-  unsubscribe = undefined
-  unpatch?.()
-  unpatch = undefined
   started = false
+  for (const unsubscribe of unsubscribers.splice(0)) unsubscribe()
   state.path = null
   state.exportNames = []
   notify()
