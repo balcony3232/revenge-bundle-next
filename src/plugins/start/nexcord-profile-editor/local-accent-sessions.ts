@@ -17,8 +17,13 @@ export const localAccentSessions = {
             listeners.delete(listener)
         }
     },
-    get: (routeKey: string | undefined) =>
-        routeKey ? sessions.get(routeKey) : undefined,
+    get: (routeKey: string | undefined) => {
+        if (routeKey && sessions.has(routeKey)) return sessions.get(routeKey)
+        // Native headers may render outside the form's navigation context.
+        // Fall back only if exactly one form exists to avoid cross-profile saves.
+        if (sessions.size !== 1) return undefined
+        return sessions.values().next().value
+    },
     register(routeKey: string, session: LocalAccentSession) {
         sessions.set(routeKey, session)
         tracked.add(session)
